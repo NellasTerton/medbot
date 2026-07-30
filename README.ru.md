@@ -1,6 +1,6 @@
 # Medbot: ИИ-консьерж для клиники
 
-[Русский](README.ru.md) | [English](README.en.md)
+<a href="README.en.md"><strong>English version</strong></a>
 
 MVP ИИ-консьержа для клиники. Бот принимает сообщение пользователя, классифицирует интент и дальше работает в одном из двух режимов:
 
@@ -17,13 +17,13 @@ MVP ИИ-консьержа для клиники. Бот принимает с�
 
 ## Скриншоты
 
-Screenshot 1: Chat widget / Виджет чата
+Demo-чат с ответом по базе знаний и оформлением заявки:
 
-![Chat widget screenshot placeholder](docs/screenshots/chat-widget.png)
+![Demo chat](docs/screenshots/chat.png)
 
-Screenshot 2: Lead delivery / Лид в Telegram или Notion
+Telegram-канал с лидами из ИИ-консьержа:
 
-![Lead delivery screenshot placeholder](docs/screenshots/lead-delivery.png)
+![Telegram lead channel](docs/screenshots/bot.png)
 
 ## Архитектура
 
@@ -48,6 +48,7 @@ flowchart LR
 - `concierge-api/public/index.html` - demo-страница для проверки бота.
 - `concierge-api/test/chat.test.mjs` - unit-тесты маршрутизации и записи.
 - `concierge-api/scripts/smoke-production.mjs` - production smoke-тесты.
+- `concierge-api/scripts/qa-production.mjs` - расширенный QA-набор production-сценариев.
 - `ingest_knowledge_base.py` - загрузка `.md` файлов клиники в Neon с эмбеддингами Voyage.
 - `create_match_documents.py` - создание SQL-функции `match_documents`.
 - `md_files/` - исходные markdown-файлы базы знаний клиники.
@@ -90,9 +91,10 @@ curl -X POST http://localhost:3000/api/chat \
 cd concierge-api
 npm test
 npm run smoke:prod
+npm run qa:prod
 ```
 
-Smoke-тесты гоняют реалистичные русскоязычные сценарии против production API и специально не отправляют завершенный фейковый лид в Make.com.
+Smoke- и QA-тесты гоняют реалистичные сценарии против production API и специально не отправляют завершенный фейковый лид в Make.com.
 
 ## Деплой
 

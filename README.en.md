@@ -1,6 +1,6 @@
 # Medbot: Clinic AI Concierge
 
-[Русский](README.ru.md) | [English](README.en.md)
+<a href="README.md"><strong>Русская версия</strong></a>
 
 MVP AI concierge for a clinic. The bot accepts a user message, classifies the intent, and then follows one of two paths:
 
@@ -17,13 +17,13 @@ This is a backend/API project with a small demo page for review. It is not a ful
 
 ## Screenshots
 
-Screenshot 1: Chat widget
+Demo chat with a knowledge-base answer and booking flow:
 
-![Chat widget screenshot placeholder](docs/screenshots/chat-widget.png)
+![Demo chat](docs/screenshots/chat.png)
 
-Screenshot 2: Lead delivery in Telegram or Notion
+Telegram lead channel:
 
-![Lead delivery screenshot placeholder](docs/screenshots/lead-delivery.png)
+![Telegram lead channel](docs/screenshots/bot.png)
 
 ## Architecture
 
@@ -48,6 +48,7 @@ flowchart LR
 - `concierge-api/public/index.html` - demo page for testing the bot.
 - `concierge-api/test/chat.test.mjs` - unit tests for routing and booking behavior.
 - `concierge-api/scripts/smoke-production.mjs` - production smoke tests.
+- `concierge-api/scripts/qa-production.mjs` - extended production QA scenarios.
 - `ingest_knowledge_base.py` - imports clinic `.md` files into Neon with Voyage embeddings.
 - `create_match_documents.py` - creates the `match_documents` SQL function.
 - `md_files/` - source clinic knowledge files.
@@ -90,9 +91,10 @@ For reliable multi-step booking sessions, send the same `X-Concierge-Session-Id`
 cd concierge-api
 npm test
 npm run smoke:prod
+npm run qa:prod
 ```
 
-The smoke tests run realistic Russian-language scenarios against the production API. They intentionally avoid submitting a complete fake lead to Make.com.
+The smoke and QA tests run realistic scenarios against the production API. They intentionally avoid submitting a complete fake lead to Make.com.
 
 ## Deployment
 
