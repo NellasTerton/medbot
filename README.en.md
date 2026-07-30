@@ -12,7 +12,6 @@ This is a backend/API project with a small demo page for review. It is not a ful
 ## Links
 
 - Try the bot: https://concierge-api-eight.vercel.app
-- Production API: https://concierge-api-eight.vercel.app/api/chat
 - Lead channel: https://t.me/democlinicleads
 
 ## Screenshots
