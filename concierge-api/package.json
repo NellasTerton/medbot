@@ -1,0 +1,18 @@
+{
+  "name": "clinic-ai-concierge-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "smoke:prod": "node scripts/smoke-production.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@neondatabase/serverless": "^1.0.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
