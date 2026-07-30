@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import handler, {
   buildLexicalPatterns,
+  expandSearchQuery,
   looksLikeContactData,
   RAG_MATCH_COUNT,
   RAG_MATCH_THRESHOLD,
@@ -67,6 +68,13 @@ test("does not treat clinic phone questions as contact data", () => {
 test("expands family doctor wording to therapist price synonyms", () => {
   const patterns = buildLexicalPatterns("Сколько стоит прием семейного врача?");
   assert.equal(patterns.includes("%терапевт%"), true);
+});
+
+test("expands generic doctor price questions to price-list wording", () => {
+  const searchQuery = expandSearchQuery("Здравствуйте, сколько стоит прием врача?");
+  const patterns = buildLexicalPatterns(searchQuery);
+  assert.match(searchQuery, /терапевт/);
+  assert.equal(patterns.includes("%визит к терапевту%"), true);
 });
 
 test("continues an existing booking without reclassifying it", async () => {

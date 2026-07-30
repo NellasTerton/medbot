@@ -197,6 +197,26 @@ async function embedQuery(message) {
   return embedding;
 }
 
+export function expandSearchQuery(message) {
+  const extras = [];
+
+  if (/(?:стоимость|сколько|цена|цену|цены|прайс|стоит)/i.test(message)) {
+    extras.push("прайс ценрадис стоимость цена EUR");
+  }
+
+  if (
+    /(?:стоимость|сколько|цена|цену|цены|прайс|стоит)/i.test(message) &&
+    /(?:прием|приём|визит|консультац)/i.test(message) &&
+    /(?:врач|врача|доктор|доктора|семейн)/i.test(message)
+  ) {
+    extras.push(
+      "терапевт визит терапевта семейный врач врач общей практики vispārējās prakses ārsta ģimenes ārsta",
+    );
+  }
+
+  return [message, ...extras].join(" ");
+}
+
 export function buildLexicalPatterns(message) {
   const words =
     message
@@ -212,16 +232,31 @@ export function buildLexicalPatterns(message) {
         .map((word) => `%${word}%`),
     ),
   ];
+  const boostedPatterns = [];
 
-  if (/(?:семейн|гименес|gimenes|ģimenes)/i.test(message)) {
-    patterns.push("%терапевт%", "%vispārēj%", "%prakses%", "%ģimenes%");
+  if (
+    /(?:семейн|гименес|gimenes|ģimenes)/i.test(message) ||
+    (
+      /(?:стоимость|сколько|цена|цену|цены|прайс|стоит)/i.test(message) &&
+      /(?:прием|приём|визит|консультац)/i.test(message) &&
+      /(?:врач|врача|доктор|доктора)/i.test(message)
+    )
+  ) {
+    boostedPatterns.push(
+      "%терапевт%",
+      "%визит к терапевту%",
+      "%vispārēj%",
+      "%prakses%",
+      "%ģimenes%",
+    );
   }
 
-  return [...new Set(patterns)].slice(0, 12);
+  return [...new Set([...boostedPatterns, ...patterns])].slice(0, 12);
 }
 
 async function answerQuestion(message) {
-  const embedding = await embedQuery(message);
+  const searchMessage = expandSearchQuery(message);
+  const embedding = await embedQuery(searchMessage);
   const vector = `[${embedding.join(",")}]`;
   const sql = neon(getDatabaseUrl());
   const semanticDocuments = await sql`
@@ -232,7 +267,7 @@ async function answerQuestion(message) {
       ${RAG_MATCH_COUNT}
     )
   `;
-  const lexicalPatterns = buildLexicalPatterns(message);
+  const lexicalPatterns = buildLexicalPatterns(searchMessage);
   const lexicalDocuments =
     lexicalPatterns.length > 0
       ? await sql`

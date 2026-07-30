@@ -35,6 +35,11 @@ const tests = [
     expect: { intent: "QUESTION", includesAny: ["35", "55", "евро", "eur"] },
   },
   {
+    name: "generic doctor appointment price",
+    message: "Здравствуйте, сколько стоит прием врача?",
+    expect: { intent: "QUESTION", includesAny: ["35", "55", "евро", "eur"] },
+  },
+  {
     name: "x-ray availability",
     message: "Есть ли у вас рентген?",
     expect: { intent: "QUESTION", includesAny: ["рентген", "снимок", "12"] },
