@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import handler, {
+  asksClinicInfo,
   buildLexicalPatterns,
+  cleanAssistantReply,
+  detectAnswerLanguage,
+  directlyRequestsBooking,
   expandSearchQuery,
   looksLikeContactData,
   RAG_MATCH_COUNT,
@@ -75,6 +79,28 @@ test("expands generic doctor price questions to price-list wording", () => {
   const patterns = buildLexicalPatterns(searchQuery);
   assert.match(searchQuery, /терапевт/);
   assert.equal(patterns.includes("%визит к терапевту%"), true);
+});
+
+test("recognizes contact and working-hours wording as clinic questions", () => {
+  assert.equal(asksClinicInfo("Какой у вас адрес?"), true);
+  assert.equal(asksClinicInfo("Телефон клиники?"), true);
+  assert.equal(asksClinicInfo("Куда можно написать на email?"), true);
+  assert.equal(asksClinicInfo("Вы работаете в субботу?"), true);
+});
+
+test("recognizes colloquial service booking without catching price research", () => {
+  assert.equal(directlyRequestsBooking("Хочу на УЗИ щитовидки"), true);
+  assert.equal(directlyRequestsBooking("Нужно к неврологу"), true);
+  assert.equal(directlyRequestsBooking("Хочу узнать цену на УЗИ"), false);
+});
+
+test("pins answer language and strips Markdown markers", () => {
+  assert.equal(detectAnswerLanguage("Эндокринолог есть?"), "русский");
+  assert.equal(detectAnswerLanguage("Cik maksā ģimenes ārsta vizīte?"), "латышский");
+  assert.equal(
+    cleanAssistantReply("**Сроки хранения:** данные удаляются.\n\n### Контакты"),
+    "Сроки хранения: данные удаляются.\n\nКонтакты",
+  );
 });
 
 test("continues an existing booking without reclassifying it", async () => {

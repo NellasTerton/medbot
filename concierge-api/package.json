@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vercel dev",
+    "qa:prod": "node scripts/qa-production.mjs",
     "smoke:prod": "node scripts/smoke-production.mjs",
     "test": "node --test"
   },
