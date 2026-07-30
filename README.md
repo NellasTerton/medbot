@@ -12,7 +12,6 @@ MVP ИИ-консьержа для клиники. Бот принимает с�
 ## Ссылки
 
 - Попробовать бота: https://concierge-api-eight.vercel.app
-- Production API: https://concierge-api-eight.vercel.app/api/chat
 - Чат/канал лидов: https://t.me/democlinicleads
 
 ## Скриншоты
