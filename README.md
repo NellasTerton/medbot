@@ -44,6 +44,8 @@ flowchart LR
 ## Что внутри
 
 - `concierge-api/api/chat.js` - Vercel Serverless API route.
+- `concierge-api/lib/clinic-core.js` - общий модуль: эмбеддинг, поиск в Neon, отправка лида в Make.
+- `mcp-server/` - MCP-сервер (stdio) с тулами `search_knowledge_base` и `submit_booking` для Claude Desktop / Claude Code.
 - `concierge-api/public/index.html` - demo-страница для проверки бота.
 - `concierge-api/test/chat.test.mjs` - unit-тесты маршрутизации и записи.
 - `concierge-api/scripts/smoke-production.mjs` - production smoke-тесты.

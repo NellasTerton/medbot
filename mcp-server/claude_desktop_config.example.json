@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "clinic-concierge": {
+      "command": "node",
+      "args": ["E:\\medbot\\mcp-server\\dist\\index.js"]
+    }
+  }
+}

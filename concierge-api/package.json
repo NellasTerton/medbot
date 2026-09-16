@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
-    "@neondatabase/serverless": "^1.0.1"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@neondatabase/serverless": "^1.0.1",
+    "zod": "^3.25.76"
   },
   "engines": {
     "node": ">=20"

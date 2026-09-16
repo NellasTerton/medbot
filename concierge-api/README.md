@@ -42,6 +42,45 @@ curl -X POST http://localhost:3000/api/chat \
 Если заголовка нет, backend использует хеш IP-адреса и User-Agent. Старый
 вариант с объектом `booking` в теле запроса также поддерживается.
 
+## MCP-эндпоинт /api/mcp
+
+`api/mcp.js` — тот же набор тулов (`search_knowledge_base`, `submit_booking`),
+но по транспорту Streamable HTTP. Разворачивается вместе с этим проектом и
+использует его переменные окружения, поэтому удалённому MCP-клиенту ничего
+настраивать локально не нужно:
+
+```
+https://<project>.vercel.app/api/mcp
+```
+
+Функция stateless: на каждый POST поднимается свой экземпляр сервера. GET и
+DELETE отклоняются с 405, это нормально для serverless.
+
+Эндпоинт публичный. Чтобы закрыть его, добавьте в переменные окружения проекта
+`MCP_AUTH_TOKEN` — тогда запросы принимаются только с заголовком
+`Authorization: Bearer <token>` или с `?token=<token>` в URL.
+
+## Общий модуль lib/clinic-core.js
+
+Эмбеддинг запроса (Voyage AI), поиск по базе знаний в Neon и отправка лида в
+Make.com вынесены в `lib/clinic-core.js`. В `api/chat.js` осталась только
+специфика чат-эндпоинта: классификация интента, диалог с Claude и состояние
+многошаговой записи.
+
+Описание MCP-тулов лежит в `lib/mcp-tools.js` и тоже не дублируется — его
+поднимают оба транспорта:
+
+```
+lib/clinic-core.js          общая логика (Voyage + Neon + Make)
+├── api/chat.js             HTTP-чат для demo-страницы
+└── lib/mcp-tools.js        описание тулов MCP
+    ├── api/mcp.js          Streamable HTTP, деплой на Vercel
+    └── ../mcp-server/      stdio, локальный запуск из Claude Desktop
+```
+
+Модуль лежит внутри `concierge-api/`, чтобы Vercel по-прежнему собирал функцию
+из корня проекта без дополнительной настройки.
+
 ## Деплой в Vercel
 
 1. Выполните `npm install`.

@@ -1,54 +1,37 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { neon } from "@neondatabase/serverless";
 import { createHash } from "node:crypto";
+import {
+  buildLexicalPatterns,
+  expandSearchQuery,
+  getDatabaseUrl,
+  hasDatabaseUrl,
+  missingLeadFields,
+  normalizeLead,
+  RAG_MATCH_COUNT,
+  RAG_MATCH_THRESHOLD,
+  requireEnv,
+  searchKnowledgeBase,
+  submitLead,
+} from "../lib/clinic-core.js";
 
-const VOYAGE_URL = "https://api.voyageai.com/v1/embeddings";
+// Поиск по базе знаний и отправка лида вынесены в ../lib/clinic-core.js: тот же
+// модуль использует MCP-сервер из mcp-server/. Здесь остаётся логика самого
+// HTTP-эндпоинта — маршрутизация интента, диалог с Claude и состояние сессии.
+export {
+  buildLexicalPatterns,
+  expandSearchQuery,
+  RAG_MATCH_COUNT,
+  RAG_MATCH_THRESHOLD,
+};
+
 const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 const MAX_MESSAGE_LENGTH = 4000;
-export const RAG_MATCH_THRESHOLD = 0.25;
-export const RAG_MATCH_COUNT = 5;
 const BOOKING_SESSION_TTL_MINUTES = 30;
 let bookingSessionsTableReady;
-const LEXICAL_STOP_WORDS = new Set([
-  "вас",
-  "вам",
-  "ваш",
-  "ваша",
-  "ваши",
-  "где",
-  "есть",
-  "какой",
-  "какая",
-  "какие",
-  "можно",
-  "нужно",
-  "сколько",
-  "этот",
-  "этого",
-]);
 
 function sendJson(res, status, payload) {
   res.status(status).json(payload);
-}
-
-function requireEnv(name) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return value;
-}
-
-function getDatabaseUrl() {
-  const databaseUrl = process.env.NEON_DATABASE_URL || process.env.NEON_URI;
-  if (!databaseUrl) {
-    throw new Error("Missing environment variable: NEON_DATABASE_URL");
-  }
-  return databaseUrl;
-}
-
-function hasDatabaseUrl() {
-  return Boolean(process.env.NEON_DATABASE_URL || process.env.NEON_URI);
 }
 
 function getAnthropic() {
@@ -59,41 +42,6 @@ function getAnthropic() {
 
 function getAnthropicModel() {
   return process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_MODEL;
-}
-
-async function fetchJson(url, options, label) {
-  const response = await fetch(url, {
-    ...options,
-    signal: AbortSignal.timeout(25_000),
-  });
-
-  const text = await response.text();
-  let data;
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    throw new Error(`${label} returned a non-JSON response`);
-  }
-
-  if (!response.ok) {
-    const detail = data?.error?.message || data?.message || `HTTP ${response.status}`;
-    throw new Error(`${label} error: ${detail}`);
-  }
-
-  return data;
-}
-
-async function postMakeWebhook(lead) {
-  const response = await fetch(requireEnv("MAKE_WEBHOOK_URL"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(lead),
-    signal: AbortSignal.timeout(25_000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Make webhook error: HTTP ${response.status}`);
-  }
 }
 
 async function claudeText(system, user, { maxTokens = 500, temperature = 0 } = {}) {
@@ -171,130 +119,8 @@ async function classifyIntent(message) {
   return answer.toUpperCase().includes("BOOKING") ? "BOOKING" : "QUESTION";
 }
 
-async function embedQuery(message) {
-  const data = await fetchJson(
-    VOYAGE_URL,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${requireEnv("VOYAGE_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        input: [message],
-        model: "voyage-3",
-        input_type: "query",
-        output_dimension: 1024,
-      }),
-    },
-    "Voyage AI",
-  );
-
-  const embedding = data?.data?.[0]?.embedding;
-  if (!Array.isArray(embedding) || embedding.length !== 1024) {
-    throw new Error("Voyage AI returned an invalid embedding");
-  }
-  return embedding;
-}
-
-export function expandSearchQuery(message) {
-  const extras = [];
-
-  if (/(?:стоимость|сколько|цена|цену|цены|прайс|стоит)/i.test(message)) {
-    extras.push("прайс ценрадис стоимость цена EUR");
-  }
-
-  if (
-    /(?:стоимость|сколько|цена|цену|цены|прайс|стоит)/i.test(message) &&
-    /(?:прием|приём|визит|консультац)/i.test(message) &&
-    /(?:врач|врача|доктор|доктора|семейн)/i.test(message)
-  ) {
-    extras.push(
-      "терапевт визит терапевта семейный врач врач общей практики vispārējās prakses ārsta ģimenes ārsta",
-    );
-  }
-
-  return [message, ...extras].join(" ");
-}
-
-export function buildLexicalPatterns(message) {
-  const words =
-    message
-      .toLowerCase()
-      .replaceAll("ё", "е")
-      .match(/\p{L}{4,}/gu) || [];
-
-  const patterns = [
-    ...new Set(
-      words
-        .filter((word) => !LEXICAL_STOP_WORDS.has(word))
-        .map((word) => (word.length >= 7 ? word.slice(0, 5) : word))
-        .map((word) => `%${word}%`),
-    ),
-  ];
-  const boostedPatterns = [];
-
-  if (
-    /(?:семейн|гименес|gimenes|ģimenes)/i.test(message) ||
-    (
-      /(?:стоимость|сколько|цена|цену|цены|прайс|стоит)/i.test(message) &&
-      /(?:прием|приём|визит|консультац)/i.test(message) &&
-      /(?:врач|врача|доктор|доктора)/i.test(message)
-    )
-  ) {
-    boostedPatterns.push(
-      "%терапевт%",
-      "%визит к терапевту%",
-      "%vispārēj%",
-      "%prakses%",
-      "%ģimenes%",
-    );
-  }
-
-  return [...new Set([...boostedPatterns, ...patterns])].slice(0, 12);
-}
-
 async function answerQuestion(message) {
-  const searchMessage = expandSearchQuery(message);
-  const embedding = await embedQuery(searchMessage);
-  const vector = `[${embedding.join(",")}]`;
-  const sql = neon(getDatabaseUrl());
-  const semanticDocuments = await sql`
-    SELECT id, content, similarity
-    FROM match_documents(
-      ${vector}::vector,
-      ${RAG_MATCH_THRESHOLD},
-      ${RAG_MATCH_COUNT}
-    )
-  `;
-  const lexicalPatterns = buildLexicalPatterns(searchMessage);
-  const lexicalDocuments =
-    lexicalPatterns.length > 0
-      ? await sql`
-          SELECT
-            id,
-            content,
-            1 - (embedding <=> ${vector}::vector) AS similarity,
-            (
-              SELECT count(*)
-              FROM unnest(${lexicalPatterns}::text[]) AS search_pattern(pattern)
-              WHERE content ILIKE search_pattern.pattern
-            ) AS lexical_hits
-          FROM knowledge_base
-          WHERE content ILIKE ANY(${lexicalPatterns}::text[])
-          ORDER BY lexical_hits DESC, embedding <=> ${vector}::vector
-          LIMIT ${RAG_MATCH_COUNT}
-        `
-      : [];
-
-  const documentsById = new Map();
-  for (const document of [...lexicalDocuments, ...semanticDocuments]) {
-    const id = String(document.id);
-    if (!documentsById.has(id)) {
-      documentsById.set(id, document);
-    }
-  }
-  const documents = [...documentsById.values()].slice(0, RAG_MATCH_COUNT);
+  const documents = await searchKnowledgeBase(message);
 
   if (documents.length === 0) {
     return {
@@ -320,18 +146,9 @@ async function answerQuestion(message) {
     intent: "QUESTION",
     reply,
     sources: documents.map((doc) => ({
-      id: String(doc.id),
-      similarity: Number(doc.similarity),
+      id: doc.id,
+      similarity: doc.similarity,
     })),
-  };
-}
-
-function normalizeLead(input = {}) {
-  return {
-    name: typeof input.name === "string" ? input.name.trim() : "",
-    phone: typeof input.phone === "string" ? input.phone.trim() : "",
-    service: typeof input.service === "string" ? input.service.trim() : "",
-    date: typeof input.date === "string" ? input.date.trim() : "",
   };
 }
 
@@ -438,9 +255,7 @@ function missingLeadReply(lead) {
     service: "услугу",
     date: "желаемые дату или время",
   };
-  const missing = Object.entries(lead)
-    .filter(([, value]) => !value)
-    .map(([key]) => labels[key]);
+  const missing = missingLeadFields(lead).map((key) => labels[key]);
 
   return `Уточните, пожалуйста: ${missing.join(", ")}.`;
 }
@@ -532,7 +347,7 @@ async function collectBooking(message, previousBooking) {
     };
   }
 
-  await postMakeWebhook(lead);
+  await submitLead(lead);
 
   return {
     intent: "BOOKING",
