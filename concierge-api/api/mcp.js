@@ -11,6 +11,12 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 import { createClinicMcpServer } from "../lib/mcp-tools.js";
+import { clientFingerprint, consumeRateLimit } from "../lib/rate-limit.js";
+
+// Эндпоинт публичный (ссылка лежит в резюме), поэтому ограничиваем частоту по
+// IP. Лимиты рассчитаны так, чтобы человек, пробующий демо, их не заметил.
+const REQUEST_LIMIT = { limit: 120, windowMinutes: 60 };
+const BOOKING_LIMIT = { limit: 5, windowMinutes: 24 * 60 };
 
 export const config = {
   api: {
@@ -48,6 +54,50 @@ function isAuthorized(req) {
   return url.searchParams.get("token") === expected;
 }
 
+function isBookingCall(body) {
+  return body?.method === "tools/call" && body?.params?.name === "submit_booking";
+}
+
+/**
+ * Считает обращения по IP. Возвращает описание превышения или null, если
+ * запрос можно пропускать.
+ */
+async function checkLimits(req) {
+  const fingerprint = clientFingerprint(req);
+
+  const overall = await consumeRateLimit({
+    key: `mcp:req:${fingerprint}`,
+    ...REQUEST_LIMIT,
+  });
+  if (!overall.allowed) {
+    return {
+      windowMinutes: overall.windowMinutes,
+      message:
+        `Слишком много обращений: не больше ${overall.limit} в час. ` +
+        "Попробуйте позже — это демонстрационный стенд.",
+    };
+  }
+
+  if (!isBookingCall(req.body)) {
+    return null;
+  }
+
+  const booking = await consumeRateLimit({
+    key: `mcp:booking:${fingerprint}`,
+    ...BOOKING_LIMIT,
+  });
+  if (!booking.allowed) {
+    return {
+      windowMinutes: booking.windowMinutes,
+      message:
+        `Достигнут дневной лимит заявок: не больше ${booking.limit} в сутки. ` +
+        "Это демонстрационный стенд, заявки уходят живым администраторам.",
+    };
+  }
+
+  return null;
+}
+
 function sendJsonRpcError(res, status, code, message) {
   res.status(status).json({
     jsonrpc: "2.0",
@@ -76,6 +126,12 @@ export default async function handler(req, res) {
       -32000,
       "Method not allowed: this MCP endpoint is stateless and accepts POST only",
     );
+  }
+
+  const limited = await checkLimits(req);
+  if (limited) {
+    res.setHeader("Retry-After", String(limited.windowMinutes * 60));
+    return sendJsonRpcError(res, 429, -32002, limited.message);
   }
 
   const server = createClinicMcpServer();
