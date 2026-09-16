@@ -43,9 +43,32 @@ flowchart LR
   Make --> Notion["Notion database item"]
 ```
 
+## MCP-сервер
+
+Те же две операции консьержа доступны как MCP-инструменты: их можно подключить
+к Claude Desktop или Claude Code и вызывать из обычного диалога.
+
+- `search_knowledge_base(query, limit?)` - поиск по базе знаний клиники;
+- `submit_booking(name, phone, service, date)` - отправка заявки в Make.com.
+
+Два транспорта поверх одного описания тулов (`concierge-api/lib/mcp-tools.js`):
+
+| Транспорт | Где живёт | Как подключить |
+| --- | --- | --- |
+| Streamable HTTP | `concierge-api/api/mcp.js`, деплоится на Vercel | Claude Desktop -> Settings -> Connectors -> Add custom connector -> `https://concierge-api-eight.vercel.app/api/mcp` |
+| stdio | `mcp-server/` | `claude mcp add clinic-concierge -- node <путь>/mcp-server/dist/index.js` |
+
+Эндпоинт публичный, поэтому ограничен по частоте с одного IP: 120 запросов в
+час и 15 заявок в сутки. Проверки fail-open - сбой счётчика не блокирует демо.
+Подробности в [mcp-server/README.md](mcp-server/README.md).
+
 ## Что внутри
 
 - `concierge-api/api/chat.js` - Vercel Serverless API route.
+- `concierge-api/api/mcp.js` - MCP-сервер по Streamable HTTP.
+- `concierge-api/lib/clinic-core.js` - общая логика: эмбеддинг, поиск в Neon, отправка лида.
+- `concierge-api/lib/mcp-tools.js` - описание MCP-тулов, одно на оба транспорта.
+- `mcp-server/` - локальный MCP-сервер по stdio для Claude Desktop.
 - `concierge-api/public/index.html` - demo-страница для проверки бота.
 - `concierge-api/test/chat.test.mjs` - unit-тесты маршрутизации и записи.
 - `concierge-api/scripts/smoke-production.mjs` - production smoke-тесты.
