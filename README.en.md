@@ -61,6 +61,20 @@ The endpoint is public, so it is rate limited per client IP: 120 requests per
 hour and 15 bookings per day. The checks fail open - a counter outage never
 blocks the demo. See [mcp-server/README.md](mcp-server/README.md) for details.
 
+### Try it
+
+1. Claude Desktop -> Settings -> Connectors -> Add custom connector, paste
+   `https://concierge-api-eight.vercel.app/api/mcp`.
+2. Ask in a new chat: "Use search_knowledge_base to find out what a family
+   doctor visit costs" - Claude queries the clinic knowledge base and answers
+   from the retrieved documents.
+3. Book a visit: "Use submit_booking: Anna, +371 29999999, thyroid ultrasound,
+   tomorrow at 15:00" - the lead goes to Make.com and shows up in the
+   [demo lead channel](https://t.me/democlinicleads).
+
+Opening `/api/mcp` in a browser shows an error by design: it is a JSON-RPC
+endpoint and only answers POST.
+
 ## Repository Contents
 
 - `concierge-api/api/chat.js` - Vercel Serverless API route.

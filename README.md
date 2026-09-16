@@ -61,6 +61,20 @@ flowchart LR
 час и 15 заявок в сутки. Проверки fail-open - сбой счётчика не блокирует демо.
 Подробности в [mcp-server/README.md](mcp-server/README.md).
 
+### Попробовать
+
+1. Claude Desktop -> Settings -> Connectors -> Add custom connector, вставить
+   `https://concierge-api-eight.vercel.app/api/mcp`.
+2. В новом чате спросить: «Через search_knowledge_base узнай, сколько стоит
+   приём семейного врача» - Claude сходит в базу клиники и ответит по найденным
+   документам.
+3. Оформить запись: «Запиши через submit_booking: Анна, +371 29999999, УЗИ
+   щитовидной железы, завтра в 15:00» - заявка уйдёт в Make.com и появится в
+   [демо-канале лидов](https://t.me/democlinicleads).
+
+Открывать `/api/mcp` в браузере бесполезно: это JSON-RPC эндпоинт, он отвечает
+только на POST.
+
 ## Что внутри
 
 - `concierge-api/api/chat.js` - Vercel Serverless API route.
