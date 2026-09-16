@@ -16,7 +16,7 @@ import { clientFingerprint, consumeRateLimit } from "../lib/rate-limit.js";
 // Эндпоинт публичный (ссылка лежит в резюме), поэтому ограничиваем частоту по
 // IP. Лимиты рассчитаны так, чтобы человек, пробующий демо, их не заметил.
 const REQUEST_LIMIT = { limit: 120, windowMinutes: 60 };
-const BOOKING_LIMIT = { limit: 5, windowMinutes: 24 * 60 };
+const BOOKING_LIMIT = { limit: 15, windowMinutes: 24 * 60 };
 
 export const config = {
   api: {
