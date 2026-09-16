@@ -12,6 +12,7 @@ This is a backend/API project with a small demo page for review. It is not a ful
 ## Links
 
 - Try the bot: https://concierge-api-eight.vercel.app
+- MCP server (Streamable HTTP): https://concierge-api-eight.vercel.app/api/mcp
 - Lead channel: https://t.me/democlinicleads
 
 ## Screenshots
